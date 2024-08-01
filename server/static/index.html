@@ -1,0 +1,144 @@
+<!-- <!DOCTYPE html>
+<html>
+  <head>
+    <title>Adaptive Streaming</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/3.0.6/shaka-player.ui.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/3.0.6/controls.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <video id="video" width="640" controls></video>
+    <script>
+      // Initialize Shaka Player
+      function initApp() {
+        shaka.polyfill.installAll();
+
+        if (shaka.Player.isBrowserSupported()) {
+          const player = new shaka.Player(document.getElementById("video"));
+
+          player
+            .load("http://localhost:3000/video/720p/720p.mpd")
+            .then(function () {
+              console.log("The video has been loaded!");
+            })
+            .catch(function (error) {
+              console.error("Error loading video:", error);
+            });
+        } else {
+          console.error("Browser not supported!");
+        }
+      }
+
+      initApp();
+    </script>
+  </body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adaptive Streaming</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/3.0.6/shaka-player.ui.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/3.0.6/controls.css"
+      rel="stylesheet"
+    />
+    <style>
+      #qualityInfo {
+        font-size: 16px;
+        margin-top: 10px;
+      }
+      .button-container {
+        margin-top: 10px;
+      }
+      .quality-button {
+        margin-right: 5px;
+        padding: 5px 10px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+      }
+      .quality-button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <video id="video" width="640" controls></video>
+    <div id="qualityInfo">Current Quality: Loading...</div>
+    <div class="button-container">
+      <button class="quality-button" data-quality="720p">720p</button>
+      <button class="quality-button" data-quality="360p">360p</button>
+    </div>
+
+    <script>
+      let player;
+      const qualityInfo = document.getElementById("qualityInfo");
+      const videoElement = document.getElementById("video");
+
+      async function initApp() {
+        shaka.polyfill.installAll();
+
+        if (shaka.Player.isBrowserSupported()) {
+          player = new shaka.Player(videoElement);
+
+          // Configure ABR settings
+          player.configure({
+            abr: {
+              enabled: true, // Enable adaptive bitrate streaming
+            },
+            streaming: {
+              rebufferingGoal: 10, // Set rebuffering goal in seconds
+              bufferingGoal: 30, // Set buffering goal in seconds
+            },
+          });
+
+          // Log the current quality being played
+          player.addEventListener("adaptation", () => {
+            const track = player.getVariantTracks().find((t) => t.active);
+            if (track) {
+              qualityInfo.textContent = `Current Quality: ${track.height}p, Bandwidth: ${track.bandwidth}bps`;
+            }
+          });
+
+          // Load the video
+          try {
+            await player.load("http://localhost:3000/video/720p/720p.mpd");
+            console.log("The video has been loaded!");
+          } catch (error) {
+            console.error("Error loading video:", error);
+          }
+
+          // Set up button event listeners
+          document.querySelectorAll(".quality-button").forEach((button) => {
+            button.addEventListener("click", () => {
+              const quality = button.getAttribute("data-quality");
+              switchQuality(quality);
+            });
+          });
+        } else {
+          console.error("Browser not supported!");
+        }
+      }
+
+      // Function to switch video quality
+      function switchQuality(quality) {
+        const manifestUrl = `http://localhost:3000/video/${quality}/${quality}.mpd`;
+        player
+          .load(manifestUrl)
+          .then(() => {
+            console.log(`Switched to ${quality} quality`);
+          })
+          .catch((error) => {
+            console.error(`Error switching quality to ${quality}:`, error);
+          });
+      }
+
+      initApp();
+    </script>
+  </body>
+</html>
