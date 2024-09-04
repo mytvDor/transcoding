@@ -1,40 +1,4 @@
-<!-- <!DOCTYPE html>
-<html>
-  <head>
-    <title>Adaptive Streaming</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/3.0.6/shaka-player.ui.js"></script>
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/3.0.6/controls.css"
-      rel="stylesheet"
-    />
-  </head>
-  <body>
-    <video id="video" width="640" controls></video>
-    <script>
-      // Initialize Shaka Player
-      function initApp() {
-        shaka.polyfill.installAll();
 
-        if (shaka.Player.isBrowserSupported()) {
-          const player = new shaka.Player(document.getElementById("video"));
-
-          player
-            .load("http://localhost:3000/video/720p/720p.mpd")
-            .then(function () {
-              console.log("The video has been loaded!");
-            })
-            .catch(function (error) {
-              console.error("Error loading video:", error);
-            });
-        } else {
-          console.error("Browser not supported!");
-        }
-      }
-
-      initApp();
-    </script>
-  </body>
-</html> -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
