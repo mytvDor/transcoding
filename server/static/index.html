@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adaptive Streaming</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/3.0.6/shaka-player.ui.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/3.0.6/controls.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 20px;
+      }
+      #playerContainer {
+        position: relative;
+        display: inline-block;
+      }
+      #video {
+        width: 640px;
+        height: 360px;
+        background: black;
+      }
+      #loadingOverlay {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 640px;
+        height: 360px;
+        background-color: rgba(0, 0, 0, 0.6);
+        color: white;
+        font-size: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        pointer-events: none;
+      }
+      #qualityInfo,
+      #networkInfo {
+        margin-top: 10px;
+        font-size: 16px;
+      }
+      .button-container {
+        margin-top: 15px;
+      }
+      .quality-button {
+        margin: 0 5px;
+        padding: 6px 12px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .quality-button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="playerContainer">
+      <video id="video" controls></video>
+      <div id="loadingOverlay">Switching Quality...</div>
+    </div>
+
+    <div id="qualityInfo">Current Quality: Loading...</div>
+    <div id="networkInfo">Network Speed: Detecting...</div>
+
+    <div class="button-container">
+      <button class="quality-button" data-quality="720p">720p</button>
+      <button class="quality-button" data-quality="360p">360p</button>
+      <button class="quality-button" data-quality="144p">144p</button>
+    </div>
+
+    <script>
+      let player;
+      const video = document.getElementById("video");
+      const qualityInfo = document.getElementById("qualityInfo");
+      const networkInfo = document.getElementById("networkInfo");
+      const loadingOverlay = document.getElementById("loadingOverlay");
+
+      function getNetworkType() {
+        return navigator.connection?.effectiveType || "unknown";
+      }
+
+      function getInitialQuality(netType) {
+        if (netType.includes("2g") || netType === "slow-2g") return "144p";
+        if (netType === "3g") return "360p";
+        return "720p";
+      }
+
+      function updateNetworkDisplay() {
+        const netType = getNetworkType();
+        networkInfo.textContent = `Network Speed: ${netType}`;
+      }
+
+      async function loadVideo(quality, time = 0) {
+        const url = `http://localhost:3000/video/${quality}/${quality}.mpd`;
+        loadingOverlay.style.display = "flex";
+
+        try {
+          await player.load(url);
+          video.currentTime = time;
+          video.play();
+          console.log(`Switched to ${quality} at ${time}s`);
+        } catch (err) {
+          console.error(`Failed to load ${quality}:`, err);
+        } finally {
+          setTimeout(() => {
+            loadingOverlay.style.display = "none";
+          }, 300);
+        }
+      }
+
+      async function initPlayer() {
+        shaka.polyfill.installAll(); //for older versions of browsers
+
+        if (!shaka.Player.isBrowserSupported()) {
+          alert("Shaka Player is not supported on this browser.");
+          return;
+        }
+
+        player = new shaka.Player(video);
+
+        player.configure({
+          abr: { enabled: true },
+          streaming: {
+            rebufferingGoal: 10,
+            bufferingGoal: 30,
+          },
+        });
+
+        player.addEventListener("adaptation", () => {
+          const activeTrack = player.getVariantTracks().find((t) => t.active);
+          if (activeTrack) {
+            qualityInfo.textContent = `Current Quality: ${activeTrack.height}p, Bandwidth: ${activeTrack.bandwidth}bps`;
+          }
+        });
+
+        // Load initial quality
+        const netType = getNetworkType();
+        updateNetworkDisplay();
+        const quality = getInitialQuality(netType);
+        await loadVideo(quality);
+
+        // Manual buttons
+        document.querySelectorAll(".quality-button").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const selected = btn.getAttribute("data-quality");
+            const time = video.currentTime;
+            await loadVideo(selected, time);
+          });
+        });
+
+        // Listen to network speed change
+        if (navigator.connection) {
+          navigator.connection.addEventListener("change", async () => {
+            const newType = getNetworkType();
+            updateNetworkDisplay();
+            const newQuality = getInitialQuality(newType);
+            const time = video.currentTime;
+            await loadVideo(newQuality, time);
+          });
+        }
+      }
+
+      initPlayer();
+    </script>
+  </body>
+</html>
